@@ -32,10 +32,10 @@ int main(int argc, char *argv[]) {
   setup_client(server_name, port);
 
   int cond = 1;
+  fprintf(stderr, "Input message: ");
   while (cond) {
     cond = control_requests();
   }
-
   terminate_client();
 
   return 0;

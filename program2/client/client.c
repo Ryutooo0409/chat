@@ -72,7 +72,7 @@ void setup_client(char *server_name, u_short port) {
   FD_ZERO(&mask);
   FD_SET(0, &mask);
   FD_SET(sock, &mask);
-  fprintf(stderr, "Input command (M=message, Q=quit): \n");
+  // fprintf(stderr, "Input command (M=message, Q=quit): \n");
 }
 
 int control_requests () {
@@ -95,34 +95,25 @@ int control_requests () {
 
   return result;
 }
-
 static int in_command() {
   CONTAINER data;
-  char com;
   memset(&data, 0, sizeof(CONTAINER));
-  com = getchar();
-  while(getchar()!='\n');
 
-  switch (com) {
-  case MESSAGE_COMMAND:
-    fprintf(stderr, "Input message: ");
-    if (fgets(data.message, MAX_LEN_MESSAGE, stdin) == NULL) {
+  if (fgets(data.message, MAX_LEN_MESSAGE, stdin) == NULL) {
       handle_error("fgets()");
-    }
-    data.command = MESSAGE_COMMAND;
-    data.message[strlen(data.message)-1] = '\0';
-    data.cid = my_id;
-    send_data(&data, sizeof(CONTAINER));
-    break;
-  case QUIT_COMMAND:
-    data.command = QUIT_COMMAND;
-    data.cid = my_id;
-    send_data(&data, sizeof(CONTAINER));
-    break;
-  default:
-    fprintf(stderr, "%c is not a valid command.\n", com);
   }
 
+  // Remove the '\n' added by fgets()
+  data.message[strcspn(data.message, "\n")] = '\0';
+
+  if (strcmp(data.message, "bye") == 0) {
+      data.command = QUIT_COMMAND;
+  } else {
+      data.command = MESSAGE_COMMAND;
+  }
+  data.cid = my_id;
+  send_data(&data, sizeof(CONTAINER));
+  
   return 1;
 }
 

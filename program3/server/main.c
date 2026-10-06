@@ -12,7 +12,7 @@ int main(int argc, char *argv[]) {
   u_short port = DEF_PORT;
   // gets the number of clients and port number 
   switch (argc) {
-  case 1:
+  // case 1:
     break;
   case 2:
     num_cl = atoi(argv[1]);

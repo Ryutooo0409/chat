@@ -11,28 +11,33 @@
 
 #include "../constants.h"
 
+// declare the static variables such as clients and number of clients etc.
 static CLIENT clients[MAX_NUM_CLIENTS];
 static int num_clients;
 static int num_socks;
 static fd_set mask;
 static CONTAINER data;
 
+// declare the server side functions such as setup, control
 void setup_server(int, u_short);
 int control_requests();
 void terminate_server();
 
+// declare the send and receive data functions
 static void send_data(int, void *, int);
 static int receive_data(int, void *, int);
 static void handle_error(char *);
 
+// set up the server function
 void setup_server(int num_cl, u_short port) {
   int rsock, sock = 0;
   struct sockaddr_in sv_addr, cl_addr;
 
   fprintf(stderr, "Server setup is started.\n");
-
+  // sets the number of clients
   num_clients = num_cl;
 
+  // creates the sock
   rsock = socket(AF_INET, SOCK_STREAM, 0);
   if (rsock < 0) {
     handle_error("socket()");
@@ -42,20 +47,23 @@ void setup_server(int num_cl, u_short port) {
   sv_addr.sin_family = AF_INET;
   sv_addr.sin_port = htons(port);
   sv_addr.sin_addr.s_addr = INADDR_ANY;
-
+  // sets the sock
   int opt = 1;
   setsockopt(rsock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-
+  
+  // handles the error with bind function
   if (bind(rsock, (struct sockaddr *)&sv_addr, sizeof(sv_addr)) != 0) {
     handle_error("bind()");
   }
   fprintf(stderr, "bind() is done successfully.\n");
-
+  
+  // handles the error with listen function
   if (listen(rsock, num_clients) != 0) {
     handle_error("listen()");
   }
   fprintf(stderr, "listen() is started.\n");
 
+  // sets socks for every clients 
   int i, max_sock = 0;
   socklen_t len;
   char src[MAX_LEN_ADDR];
@@ -80,7 +88,7 @@ void setup_server(int num_cl, u_short port) {
   }
 
   close(rsock);
-
+  // sends a data to every clients in the server
   int j;
   for (i = 0; i < num_clients; i++) {
     send_data(i, &num_clients, sizeof(int));
@@ -94,31 +102,39 @@ void setup_server(int num_cl, u_short port) {
   FD_ZERO(&mask);
   FD_SET(0, &mask);
 
+  // finishes the server set up
   for (i = 0; i < num_clients; i++) {
     FD_SET(clients[i].sock, &mask);
   }
   fprintf(stderr, "Server setup is done.\n");
 }
 
+// the function that controls all requests
 int control_requests() {
+  // creates read flags and data container with memset function
   fd_set read_flag = mask;
   memset(&data, 0, sizeof(CONTAINER));
-
+  
+  // handles the error with select function 
   fprintf(stderr, "select() is started.\n");
   if (select(num_socks, (fd_set *)&read_flag, NULL, NULL, NULL) == -1) {
     handle_error("select()");
   }
 
+  // controls requests within the all clients 
   int i, result = 1;
   for (i = 0; i < num_clients; i++) {
     if (FD_ISSET(clients[i].sock, &read_flag)) {
+      // all clients receive the data
       receive_data(i, &data, sizeof(data));
       switch (data.command) {
+        // if data.command is M, the server broadcasts the data to all clients
       case MESSAGE_COMMAND:
         fprintf(stderr, "client[%d] %s: message = %s\n", clients[i].cid, clients[i].name, data.message);
         send_data(BROADCAST, &data, sizeof(data));
         result = 1;
         break;
+        // if data.command is Q, the server stops broadcasting and stops serving for all clients
       case QUIT_COMMAND:
         fprintf(stderr, "client[%d] %s: quit\n", clients[i].cid, clients[i].name);
         send_data(BROADCAST, &data, sizeof(data));
@@ -134,16 +150,19 @@ int control_requests() {
   return result;
 }
 
+// sends the data function
 static void send_data(int cid, void *data, int size) {
+  // handles the error with number of clients 
   if ((cid != BROADCAST) && (0 > cid || cid >= num_clients)) {
     fprintf(stderr, "send_data(): client id is illeagal.\n");
     exit(1);
   }
+  // if data is null or size is less than zero send_data function stops instantly
   if ((data == NULL) || (size <= 0)) {
     fprintf(stderr, "send_data(): data is illeagal.\n");
     exit(1);
   }
-
+  // if cid is broadcast, it writes datas for all clients and handles the error with that
   if (cid == BROADCAST) {
     int i;
     for (i = 0; i < num_clients; i++) {
@@ -158,11 +177,14 @@ static void send_data(int cid, void *data, int size) {
   }
 }
 
+// receive the data function. In overall, It handles receiving data for the server and clients
 static int receive_data(int cid, void *data, int size) {
+  // handles the error with broadcast mode and the number of clients 
   if ((cid != BROADCAST) && (0 > cid || cid >= num_clients)) {
     fprintf(stderr, "receive_data(): client id is illeagal.\n");
     exit(1);
   }
+  // if data is null or size is less than zero, the function stops instantly
   if ((data == NULL) || (size <= 0)) {
     fprintf(stderr, "receive_data(): data is illeagal.\n");
   	exit(1);
@@ -171,12 +193,14 @@ static int receive_data(int cid, void *data, int size) {
   return read(clients[cid].sock, data, size);
 }
 
+// error handling function for the all reasons
 static void handle_error(char *message) {
   perror(message);
   fprintf(stderr, "%d\n", errno);
   exit(1);
 }
 
+// server stopping function mainly for the server side. It stops the server and disconnet with all clients in the server 
 void terminate_server(void) {
   int i;
   for (i = 0; i < num_clients; i++) {

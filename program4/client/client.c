@@ -1,4 +1,4 @@
-// program1
+// program4
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,6 +17,7 @@ static int sock;
 static int num_sock;
 static fd_set mask;
 static CLIENT clients[MAX_NUM_CLIENTS];
+static int message_id[MAX_NUM_CLIENTS];
 
 void setup_client(char *, u_short);
 int control_requests();
@@ -133,17 +134,18 @@ static int exe_command() {
   receive_data(&data, sizeof(data));
 
   switch (data.command) {
-  case MESSAGE_COMMAND:
-    fprintf(stderr, "client[%d] %s: %s\n", data.cid, clients[data.cid].name, data.message);
-    result = 1;
-    break;
-  case QUIT_COMMAND:
-    fprintf(stderr, "client[%d] %s sent quit command.\n", data.cid, clients[data.cid].name);
-    result = 0;
-    break;
-  default:
-    fprintf(stderr, "exe_command(): %c is not a valid command.\n", data.command);
-    exit(1);
+    case MESSAGE_COMMAND:
+      message_id[data.cid]++;
+      fprintf(stderr, "client[%d] %s: [%d] %s\n", data.cid, clients[data.cid].name, message_id[data.cid] ,data.message);
+      result = 1;
+      break;
+    case QUIT_COMMAND:
+      fprintf(stderr, "client[%d] %s sent quit command.\n", data.cid, clients[data.cid].name);
+      result = 0;
+      break;
+    default:
+      fprintf(stderr, "exe_command(): %c is not a valid command.\n", data.command);
+      exit(1);
   }
 
   return result;
